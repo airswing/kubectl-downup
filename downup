@@ -1,20 +1,24 @@
 #!/bin/sh
 
 deployfile="deploy.yaml"
-app=app_name
-container=container_name
+app=sidecartest
+containers=("sidecar-test" "app-test" "another-app-test")
 
 kubectl delete -f $deployfile
 kubectl apply -f $deployfile
 # get name of newest pod with app name
 pod=$(kubectl get pods -l app=$app -o custom-columns=:metadata.name --sort-by=.metadata.creationTimestamp | tail -1)
 
-echo "#!/bin/sh" > logs
-echo "echo \"Running kubectl logs $pod $container\":" >> logs
-echo "kubectl logs $pod $container" >> logs
-chmod +x logs
+for container in "${containers[@]}"; do
+	logs="logs-${container}"
+	echo "#!/bin/sh" > $logs
+	echo "echo \"Running kubectl logs $pod $container\":" >> $logs
+	echo "kubectl logs $pod $container" >> $logs
+	chmod +x $logs
 
-echo "#!/bin/sh" > exec
-echo "echo \"Running kubectl exec --stdin --tty pod/$pod --container $container -- /bin/bash\":" >> exec
-echo "kubectl exec --stdin --tty pod/$pod --container $container -- /bin/bash" >> exec
-chmod +x exec
+	exec="exec-${container}"
+	echo "#!/bin/sh" > $exec
+	echo "echo \"Running kubectl exec --stdin --tty pod/$pod --container $container -- /bin/bash\":" >> $exec
+	echo "kubectl exec --stdin --tty pod/$pod --container $container -- /bin/bash" >> $exec
+	chmod +x $exec
+done
