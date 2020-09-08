@@ -1,13 +1,19 @@
 #!/bin/sh
 
-deployfile="deploy.yaml"
-app=sidecartest
-containers=("sidecar-test" "app-test" "another-app-test")
+# Overwrite shell parameter with custom hardcoded path if desired
+deployfile="$1"
 
+app=$(grep 'app:' $deployfile | tail -n1 | awk '{ print $2}')
+echo "app name is '$app'"
 kubectl delete -f $deployfile
 kubectl apply -f $deployfile
-# get name of newest pod with app name
+
+# get the latest  pod name
 pod=$(kubectl get pods -l app=$app -o custom-columns=:metadata.name --sort-by=.metadata.creationTimestamp | tail -1)
+
+# get the list of containers
+containers_string=$(kubectl get pods $pod -o jsonpath={.spec.containers[*].name})
+IFS=', ' read -r -a containers <<< "$containers_string"
 
 for container in "${containers[@]}"; do
 	logs="logs-${container}"
